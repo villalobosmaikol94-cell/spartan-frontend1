@@ -246,7 +246,7 @@ export default function WarehouseDashboard() {
                       const files = e.target.files;
                       if (!files || files.length === 0) return;
 
-                      // 🔥 SOLUCIÓN ESTABLE: Tomamos el archivo individual mediante el índice [0]
+                      // 🎯 CORRECCIÓN ABSOLUTA: Extraer el archivo real con el índice [0]
                       const archivoFoto = files[0]; 
                       const nombreArchivo = `${Date.now()}_${archivoFoto.name.replace(/\s+/g, '_')}`;
 
