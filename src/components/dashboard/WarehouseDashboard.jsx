@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient'; // Conexión directa a la nube de Supabase
+import { supabase } from '../../supabaseClient';
 
 export default function WarehouseDashboard() {
   const [inventory, setInventory] = useState([]);
@@ -16,22 +16,19 @@ export default function WarehouseDashboard() {
     image: ''
   });
 
-  // 📥 Cargar inventario real directamente desde la tabla de Supabase en la nube
+  // 📥 Cargar inventario real desde el Backend/Supabase al iniciar
   const fetchInventory = async () => {
     try {
-      const { data, error } = await supabase
-        .from('inventario_celular')
-        .select('*')
-        .order('id', { ascending: true });
-
-      if (error) throw error;
-      setInventory(data || []);
+      const response = await fetch('http://localhost:5000/api/v1/inventario');
+      if (!response.ok) throw new Error("Error en respuesta");
+      const data = await response.json();
+      setInventory(data);
     } catch (error) {
-      console.error("Fallo al conectar con Supabase en la nube:", error.message);
-      // Datos de respaldo estables por si la red falla de camino a la reunión
+      console.error("Fallo al conectar backend, cargando locales:", error.message);
+      // Datos de respaldo por si el servidor local se desconecta temporalmente
       setInventory([
-        { id: 1, name: "PANTALLA OLED IPHONE 14 PRO MAX", category: "MICROPARTES", price: 149.00, stock: 15, image: "" },
-        { id: 4, name: "PLANCHA DE CALOR REPARACIÓN RF4", category: "ELECTRÓNICA", price: 85.00, stock: 8, image: "" }
+        { id: 1, name: "PANTALLA OLED IPHONE 14 PRO MAX", category: "MICROPARTES", price: 149.00, stock: 15, image: "https://unsplash.com" },
+        { id: 4, name: "PLANCHA DE CALOR REPARACIÓN RF4", category: "ELECTRÓNICA", price: 85.00, stock: 8, image: "https://unsplash.com" }
       ]);
     }
   };
@@ -58,56 +55,45 @@ export default function WarehouseDashboard() {
     setIsModalOpen(true);
   };
 
-  // 🚀 Enviar datos directo a Supabase (Guardar nuevo o Actualizar existente)
+  // 🚀 Enviar datos al Servidor (Guardar o Actualizar)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
+    const url = editingItem 
+      ? `http://localhost:5000/api/v1/inventario/editar/${editingItem.id}`
+      : 'http://localhost:5000/api/v1/inventario/crear';
+
     try {
-      if (editingItem) {
-        // OPERACIÓN EN LA NUBE: MODIFICAR PRODUCTO EXISTENTE
-        const { error } = await supabase
-          .from('inventario_celular')
-          .update({
-            name: formData.name.toUpperCase(),
-            category: formData.category,
-            price: parseFloat(formData.price),
-            stock: parseInt(formData.stock),
-            image: formData.image
-          })
-          .eq('id', parseInt(editingItem.id));
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name.toUpperCase(),
+          category: formData.category,
+          price: parseFloat(formData.price),
+          stock: parseInt(formData.stock),
+          image: formData.image
+        })
+      });
 
-        if (error) throw error;
-        alert("¡Ítem modificado con éxito en la nube!");
-      } else {
-        // OPERACIÓN EN LA NUBE: CREAR NUEVO PRODUCTO EN LA BODEGA
-        const { error } = await supabase
-          .from('inventario_celular')
-          .insert([{
-            name: formData.name.toUpperCase(),
-            category: formData.category,
-            price: parseFloat(formData.price),
-            stock: parseInt(formData.stock),
-            image: formData.image
-          }]);
-
-        if (error) throw error;
-        alert("Nuevo producto registrado con éxito en la nube");
-      }
-
+      if (!response.ok) throw new Error("Fallo en persistencia");
+      
+      alert(editingItem ? "¡Ítem modificado con éxito en la nube!" : "Nuevo producto registrado con éxito");
       setIsModalOpen(false);
-      await fetchInventory(); // Forzar recarga inmediata de los valores de la nube
+      
+      // Forzar recarga inmediata de la base de datos para pintar los nuevos valores
+      await fetchInventory();
     } catch (error) {
-      console.error("Error crítico de sincronización:", error.message);
-      alert("Error al sincronizar cambios con la base de datos: " + error.message);
+      alert("Error físico al sincronizar cambios con el backend.");
     } finally {
       setLoading(false);
     }
   };
 
   // Métricas logísticas en tiempo real
-  const totalArticulos = inventory.reduce((acc, item) => acc + Number(item.stock || 0), 0);
-  const alertasStock = inventory.filter(item => Number(item.stock || 0) < 10).length;
+  const totalArticulos = inventory.reduce((acc, item) => acc + Number(item.stock), 0);
+  const alertasStock = inventory.filter(item => Number(item.stock) < 10).length;
   return (
     <section id="bodega" className="w-full py-8 px-4 max-w-7xl mx-auto">
       
@@ -246,38 +232,32 @@ export default function WarehouseDashboard() {
                       const files = e.target.files;
                       if (!files || files.length === 0) return;
 
-                      // 🎯 CORRECCIÓN: Extracción estable del archivo individual
-                      const archivoFoto = files; 
-                      const nombreArchivo = `${Date.now()}_${archivoFoto.name.replace(/\s+/g, '_')}`;
+                      // TOMAR EL ARCHIVO EXACTO MEDIANTE ÍNDICE [0]
+                      const archivoFoto = files[0];
+
+                      const fileFormData = new FormData();
+                      fileFormData.append('foto', archivoFoto);
 
                       alert("Subiendo imagen al Storage de Spartan Systems...");
 
                       try {
-                        // 📷 Subida directa especificando el tipo de contenido real del archivo
-                        const { data, error } = await supabase.storage
-                          .from('productos')
-                          .upload(nombreArchivo, archivoFoto, {
-                            cacheControl: '3600',
-                            upsert: true,
-                            contentType: archivoFoto.type // 🎯 CORRECCIÓN DE ERROR DE CONTENIDO
-                          });
+                        const uploadResponse = await fetch('http://localhost:5000/api/v1/inventario/upload', {
+                          method: 'POST',
+                          body: fileFormData
+                        });
                         
-                        if (error) throw error;
+                        if (!uploadResponse.ok) throw new Error("Fallo subida");
                         
-                        // Obtener la URL pública oficial
-                        const { data: urlData } = supabase.storage
-                          .from('productos')
-                          .getPublicUrl(nombreArchivo);
+                        const uploadData = await uploadResponse.json();
                         
-                        if (urlData?.publicUrl) {
-                          setFormData(prev => ({ ...prev, image: urlData.publicUrl }));
+                        if (uploadData.publicUrl) {
+                          setFormData({ ...formData, image: uploadData.publicUrl });
                           alert("¡Imagen almacenada y vinculada con éxito!");
                         } else {
                           alert("Error al procesar la respuesta del almacenamiento.");
                         }
                       } catch (error) {
-                        console.error("Error subiendo al Storage:", error.message);
-                        alert("Fallo al subir imagen: Asegúrate de que el archivo no esté corrupto.");
+                        alert("Error físico al conectar el cargador con el servidor backend.");
                       }
                     }}
                   />
