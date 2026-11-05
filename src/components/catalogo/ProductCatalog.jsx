@@ -25,8 +25,8 @@ export default function ProductCatalog({ onAddToCart }) {
 
   // Filtrado inteligente según el apartado seleccionado por el usuario
   const filteredProducts = activeCategory === "TODOS" 
-    ? products 
-    : products.filter(p => p.category === activeCategory);
+  ? products 
+  : products.filter(p => p.category?.toUpperCase() === activeCategory.toUpperCase());
 
   return (
     <section id="catalogo" className="w-full py-12 px-6 max-w-7xl mx-auto">
