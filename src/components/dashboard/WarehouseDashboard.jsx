@@ -246,19 +246,20 @@ export default function WarehouseDashboard() {
                       const files = e.target.files;
                       if (!files || files.length === 0) return;
 
-                      // 🎯 CORRECCIÓN ABSOLUTA: Extraer el archivo real con el índice [0]
-                      const archivoFoto = files[0]; 
+                      // 🎯 CORRECCIÓN: Extracción estable del archivo individual
+                      const archivoFoto = files; 
                       const nombreArchivo = `${Date.now()}_${archivoFoto.name.replace(/\s+/g, '_')}`;
 
                       alert("Subiendo imagen al Storage de Spartan Systems...");
 
                       try {
-                        // 📷 Subida directa al bucket 'productos' de Supabase
+                        // 📷 Subida directa especificando el tipo de contenido real del archivo
                         const { data, error } = await supabase.storage
                           .from('productos')
                           .upload(nombreArchivo, archivoFoto, {
                             cacheControl: '3600',
-                            upsert: true
+                            upsert: true,
+                            contentType: archivoFoto.type // 🎯 CORRECCIÓN DE ERROR DE CONTENIDO
                           });
                         
                         if (error) throw error;
