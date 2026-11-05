@@ -28,7 +28,7 @@ export default function WarehouseDashboard() {
       setInventory(data || []);
     } catch (error) {
       console.error("Fallo al conectar con Supabase en la nube:", error.message);
-      // Datos de respaldo estables por si la red falla temporalmente
+      // Datos de respaldo estables por si la red falla de camino a la reunión
       setInventory([
         { id: 1, name: "PANTALLA OLED IPHONE 14 PRO MAX", category: "MICROPARTES", price: 149.00, stock: 15, image: "" },
         { id: 4, name: "PLANCHA DE CALOR REPARACIÓN RF4", category: "ELECTRÓNICA", price: 85.00, stock: 8, image: "" }
@@ -246,13 +246,14 @@ export default function WarehouseDashboard() {
                       const files = e.target.files;
                       if (!files || files.length === 0) return;
 
-                      const archivoFoto = files[0];
+                      // 🔥 SOLUCIÓN ESTABLE: Tomamos el archivo individual mediante el índice [0]
+                      const archivoFoto = files[0]; 
                       const nombreArchivo = `${Date.now()}_${archivoFoto.name.replace(/\s+/g, '_')}`;
 
                       alert("Subiendo imagen al Storage de Spartan Systems...");
 
                       try {
-                        // 📷 Subida directa al bucket 'productos' de Supabase en la nube
+                        // 📷 Subida directa al bucket 'productos' de Supabase
                         const { data, error } = await supabase.storage
                           .from('productos')
                           .upload(nombreArchivo, archivoFoto, {
@@ -275,7 +276,7 @@ export default function WarehouseDashboard() {
                         }
                       } catch (error) {
                         console.error("Error subiendo al Storage:", error.message);
-                        alert("Fallo al subir imagen: Asegúrate de tener el bucket llamado 'productos' creado como público en tu panel de Supabase.");
+                        alert("Fallo al subir imagen: Asegúrate de que el archivo no esté corrupto.");
                       }
                     }}
                   />
