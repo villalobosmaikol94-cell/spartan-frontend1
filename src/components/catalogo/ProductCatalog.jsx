@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-
 export default function ProductCatalog({ onAddToCart }) {
   // Estado reactivo para almacenar los productos reales de Supabase
   const [products, setProducts] = useState([]);
